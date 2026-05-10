@@ -1,0 +1,69 @@
+# Siren Driver
+
+Minimal Raspberry Pi webhook service that triggers a GPIO-controlled siren or LED toy.
+
+## What it does
+
+- Exposes `POST /trigger`
+- Requires HMAC authentication
+- Turns one GPIO pin on for a configurable duration
+- Defaults GPIO off and forces it off after every trigger or error path
+- Ships Podman and quadlet deployment files for Raspberry Pi OS
+
+## Quick start
+
+1. Install Python dependencies with `uv` into `.venv`:
+
+   ```bash
+   uv sync --extra dev
+   ```
+
+2. Create a local environment file:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+3. Start the service locally:
+
+   ```bash
+   uv run uvicorn siren_driver.main:app --host 0.0.0.0 --port 8000
+   ```
+
+## Authentication
+
+The service expects these headers on every request:
+
+- `X-Siren-Timestamp`: Unix timestamp in seconds
+- `X-Siren-Signature`: `sha256=<hex>` over `timestamp + "." + raw-body`
+
+The signature is computed with `SIREN_WEBHOOK_SECRET`.
+
+Example payload:
+
+```json
+{"duration_seconds": 3}
+```
+
+Example signature base string:
+
+```text
+1700000000.{"duration_seconds":3}
+```
+
+## Environment
+
+See `.env.example` for the full list of settings.
+
+## Podman and quadlet
+
+- `scripts/podman-build.sh` builds the container image
+- `scripts/podman-run.sh` runs the container locally with sensible defaults
+- `scripts/quadlet-install.sh` installs the quadlet unit into the user systemd directory
+- `scripts/quadlet-uninstall.sh` removes the installed quadlet unit
+
+## Safety notes
+
+- GPIO starts inactive and is driven low on startup.
+- Each trigger is serialized so overlapping activations are rejected.
+- The service turns the pin off in `finally` blocks and on shutdown.
