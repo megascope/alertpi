@@ -61,6 +61,7 @@ See `.env.example` for the full list of settings.
 - `scripts/podman-run.sh` runs the container locally with sensible defaults
 - `scripts/quadlet-install.sh` installs the quadlet unit into the user systemd directory
 - `scripts/quadlet-uninstall.sh` removes the installed quadlet unit
+- The host user must be able to access `/dev/gpiomem`; on Raspberry Pi OS that usually means joining the `gpio` group and logging out/in, or running the service with the quadlet `GroupAdd=gpio` setting already included here.
 
 ## Safety notes
 

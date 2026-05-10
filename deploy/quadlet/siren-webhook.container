@@ -6,9 +6,9 @@ Image=localhost/siren-webhook:latest
 ContainerName=siren-webhook
 PublishPort=8000:8000
 EnvironmentFile=%h/.config/siren-webhook/siren-webhook.env
-Exec=uvicorn siren_driver.main:app --host 0.0.0.0 --port 8000
 Volume=%h/.config/siren-webhook:/config:Z
 Device=/dev/gpiomem
+GroupAdd=gpio
 
 [Service]
 Restart=always
