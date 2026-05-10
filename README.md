@@ -55,6 +55,34 @@ Example signature base string:
 
 See `.env.example` for the full list of settings.
 
+## Localhost testing
+
+Webhook path test (auth + API + GPIO):
+
+1. Start the service:
+
+   ```bash
+   uv run uvicorn siren_driver.main:app --host 127.0.0.1 --port 8000
+   ```
+
+2. In another terminal, run:
+
+   ```bash
+   uv run python scripts/local_trigger.py --secret "replace-me" --duration 1.5
+   ```
+
+Direct GPIO pulse test (no HTTP):
+
+```bash
+uv run python scripts/gpio_smoke.py --pin 17 --duration 1.0
+```
+
+Mock-only test mode (safe on laptops with no GPIO hardware):
+
+```bash
+GPIOZERO_PIN_FACTORY=mock uv run python scripts/gpio_smoke.py --pin 17 --duration 0.2
+```
+
 ## Podman and quadlet
 
 - `scripts/podman-build.sh` builds the container image
