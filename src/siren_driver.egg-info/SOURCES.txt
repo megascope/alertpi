@@ -1,3 +1,4 @@
+LICENSE
 README.md
 pyproject.toml
 src/siren_driver/__init__.py

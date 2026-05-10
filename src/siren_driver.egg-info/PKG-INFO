@@ -2,14 +2,18 @@ Metadata-Version: 2.4
 Name: siren-driver
 Version: 0.1.0
 Summary: Raspberry Pi siren webhook service
-Requires-Python: >=3.11
+Requires-Python: <3.12,>=3.11
 Description-Content-Type: text/markdown
+License-File: LICENSE
 Requires-Dist: fastapi<1,>=0.115
 Requires-Dist: uvicorn[standard]<1,>=0.30
 Requires-Dist: gpiozero<3,>=2.0
 Provides-Extra: dev
 Requires-Dist: pytest<9,>=8.0; extra == "dev"
 Requires-Dist: httpx<1,>=0.27; extra == "dev"
+Provides-Extra: pi
+Requires-Dist: rpi-lgpio<1,>=0.6; (platform_system == "Linux" and (platform_machine == "armv7l" or platform_machine == "aarch64")) and extra == "pi"
+Dynamic: license-file
 
 # Siren Driver
 
@@ -25,19 +29,31 @@ Minimal Raspberry Pi webhook service that triggers a GPIO-controlled siren or LE
 
 ## Quick start
 
-1. Install Python dependencies with `uv` into `.venv`:
+1. Use Python 3.11 for this project (recommended on Raspberry Pi):
 
    ```bash
-   uv sync --extra dev
+   uv python install 3.11
    ```
 
-2. Create a local environment file:
+2. Install Python dependencies with `uv` into `.venv`:
+
+   ```bash
+   uv sync --python 3.11 --extra dev
+   ```
+
+   On Raspberry Pi hardware, install the Pi GPIO extra as well:
+
+   ```bash
+   uv sync --python 3.11 --extra dev --extra pi
+   ```
+
+3. Create a local environment file:
 
    ```bash
    cp .env.example .env
    ```
 
-3. Start the service locally:
+4. Start the service locally:
 
    ```bash
    uv run uvicorn siren_driver.main:app --host 0.0.0.0 --port 8000
@@ -68,12 +84,47 @@ Example signature base string:
 
 See `.env.example` for the full list of settings.
 
+## Localhost testing
+
+Webhook path test (auth + API + GPIO):
+
+1. Start the service:
+
+   ```bash
+   uv run uvicorn siren_driver.main:app --host 127.0.0.1 --port 8000
+   ```
+
+2. In another terminal, run:
+
+   ```bash
+   uv run python scripts/local_trigger.py --secret "replace-me" --duration 1.5
+   ```
+
+Direct GPIO pulse test (no HTTP):
+
+```bash
+uv run python scripts/gpio_smoke.py --pin 17 --duration 1.0
+```
+
+If gpiozero reports pin factory fallbacks on Raspberry Pi, force the intended backend:
+
+```bash
+GPIOZERO_PIN_FACTORY=lgpio uv run --python 3.11 python scripts/gpio_smoke.py --pin 17 --duration 1.0
+```
+
+Mock-only test mode (safe on laptops with no GPIO hardware):
+
+```bash
+GPIOZERO_PIN_FACTORY=mock uv run python scripts/gpio_smoke.py --pin 17 --duration 0.2
+```
+
 ## Podman and quadlet
 
 - `scripts/podman-build.sh` builds the container image
 - `scripts/podman-run.sh` runs the container locally with sensible defaults
 - `scripts/quadlet-install.sh` installs the quadlet unit into the user systemd directory
 - `scripts/quadlet-uninstall.sh` removes the installed quadlet unit
+- The host user must be able to access `/dev/gpiomem`; on Raspberry Pi OS that usually means joining the `gpio` group and logging out/in, or running the service with the quadlet `GroupAdd=gpio` setting already included here.
 
 ## Safety notes
 

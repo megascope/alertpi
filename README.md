@@ -12,19 +12,39 @@ Minimal Raspberry Pi webhook service that triggers a GPIO-controlled siren or LE
 
 ## Quick start
 
-1. Install Python dependencies with `uv` into `.venv`:
+1. Run the bootstrap script:
 
    ```bash
-   uv sync --extra dev
+   ./scripts/setup.sh
    ```
 
-2. Create a local environment file:
+   On Raspberry Pi, this auto-installs the Pi GPIO extra. On non-Pi hosts, it installs only the default/dev extras.
+
+2. If you prefer the manual path, use Python 3.11 for this project:
+
+   ```bash
+   uv python install 3.11
+   ```
+
+3. Install Python dependencies with `uv` into `.venv`:
+
+   ```bash
+   uv sync --python 3.11 --extra dev
+   ```
+
+   On Raspberry Pi hardware, install the Pi GPIO extra as well:
+
+   ```bash
+   uv sync --python 3.11 --extra dev --extra pi
+   ```
+
+4. Create a local environment file:
 
    ```bash
    cp .env.example .env
    ```
 
-3. Start the service locally:
+5. Start the service locally:
 
    ```bash
    uv run uvicorn siren_driver.main:app --host 0.0.0.0 --port 8000
@@ -75,6 +95,12 @@ Direct GPIO pulse test (no HTTP):
 
 ```bash
 uv run python scripts/gpio_smoke.py --pin 17 --duration 1.0
+```
+
+If gpiozero reports pin factory fallbacks on Raspberry Pi, force the intended backend:
+
+```bash
+GPIOZERO_PIN_FACTORY=lgpio uv run --python 3.11 python scripts/gpio_smoke.py --pin 17 --duration 1.0
 ```
 
 Mock-only test mode (safe on laptops with no GPIO hardware):
