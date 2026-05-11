@@ -10,7 +10,6 @@ RUN apt-get update \
             build-essential \
             python3-dev \
             swig \
-            liblgpio-dev \
         && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir uv
