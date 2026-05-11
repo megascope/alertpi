@@ -15,8 +15,8 @@ Hardware:
 
 Networking/security:
 - Raspberry Pi OS
-- Prefer Podman container over Docker for cleaner rootless/isolation options
-- GPIO access from container is allowed, but container needs appropriate device/group permissions
+- Prefer a dedicated host `siren` user and systemd service for GPIO reliability
+- Rootless containers were not suitable for GPIO access in practice; the service should run directly on the host
 - Device may be exposed via Cloudflare/PagerDuty webhook
 - Need API-key/HMAC-style app auth because PagerDuty may not support Cloudflare Access service token headers
 - Wi-Fi can be preconfigured with NetworkManager/nmcli

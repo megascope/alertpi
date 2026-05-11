@@ -8,7 +8,8 @@ Minimal Raspberry Pi webhook service that triggers a GPIO-controlled siren or LE
 - Requires bearer-token authentication
 - Turns one GPIO pin on for a configurable duration
 - Defaults GPIO off and forces it off after every trigger or error path
-- Ships Podman and quadlet deployment files for Raspberry Pi OS
+- Runs well as a dedicated host `siren` user under systemd on Raspberry Pi OS
+- Avoids rootless Podman for GPIO because host device passthrough and pin factories were unreliable in practice
 
 ## Quick start
 
@@ -20,13 +21,19 @@ Minimal Raspberry Pi webhook service that triggers a GPIO-controlled siren or LE
 
    On Raspberry Pi, this auto-installs the Pi GPIO extra. On non-Pi hosts, it installs only the default/dev extras.
 
-2. If you prefer the manual path, use Python 3.11 for this project:
+2. Create the dedicated service user and its locked-down home/config layout:
+
+   ```bash
+   sudo ./scripts/setup-siren-user.sh
+   ```
+
+3. If you prefer the manual path, use Python 3.11 for this project:
 
    ```bash
    uv python install 3.11
    ```
 
-3. Install Python dependencies with `uv` into `.venv`:
+4. Install Python dependencies with `uv` into `.venv`:
 
    ```bash
    uv sync --python 3.11 --extra dev
@@ -38,13 +45,19 @@ Minimal Raspberry Pi webhook service that triggers a GPIO-controlled siren or LE
    uv sync --python 3.11 --extra dev --extra pi
    ```
 
-4. Create a local environment file:
+5. Create a local environment file:
 
    ```bash
    cp .env.example .env
    ```
 
-5. Start the service locally:
+6. Install the host systemd service:
+
+   ```bash
+   sudo ./scripts/systemd-install.sh
+   ```
+
+7. Start the service locally:
 
    ```bash
    uv run uvicorn siren_driver.main:app --host 0.0.0.0 --port 8000
@@ -71,6 +84,19 @@ Example payload:
 ## Environment
 
 See `.env.example` for the full list of settings.
+
+If you are using the host systemd deployment, the bearer token comes from
+`/etc/siren-driver/siren-driver.env`, which is created from `.env.example` by
+[`scripts/setup-siren-user.sh`](scripts/setup-siren-user.sh) if it does not
+already exist.
+
+The dedicated `siren` account is intentionally locked down:
+
+- `nologin` shell
+- no interactive password
+- only the `gpio` supplementary group
+- private home under `/var/lib/siren-driver`
+- config directory under `/etc/siren-driver`
 
 ## Localhost testing
 
@@ -106,13 +132,30 @@ Mock-only test mode (safe on laptops with no GPIO hardware):
 GPIOZERO_PIN_FACTORY=mock uv run python scripts/gpio_smoke.py --pin 17 --duration 0.2
 ```
 
-## Podman and quadlet
+## Host service
 
-- `scripts/podman-build.sh` builds the container image
-- `scripts/podman-run.sh` runs the container locally with sensible defaults
-- `scripts/quadlet-install.sh` installs the quadlet unit into the user systemd directory
-- `scripts/quadlet-uninstall.sh` removes the installed quadlet unit
-- The host user must be able to access `/dev/gpiomem`; on Raspberry Pi OS that usually means joining the `gpio` group and logging out/in, or running the service with the quadlet `GroupAdd=gpio` setting already included here.
+This project is designed to run directly on the Pi as a dedicated service user.
+
+Install and enable the service:
+
+```bash
+sudo ./scripts/setup-siren-user.sh
+sudo ./scripts/systemd-install.sh
+```
+
+Check status and logs:
+
+```bash
+sudo systemctl status siren-driver.service --no-pager
+sudo journalctl -u siren-driver.service -n 50 --no-pager
+```
+
+Remove the service:
+
+```bash
+sudo ./scripts/systemd-uninstall.sh
+sudo ./scripts/systemd-uninstall.sh --purge
+```
 
 ## Safety notes
 
