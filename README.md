@@ -5,7 +5,7 @@ Minimal Raspberry Pi webhook service that triggers a GPIO-controlled siren or LE
 ## What it does
 
 - Exposes `POST /trigger`
-- Requires HMAC authentication
+- Requires bearer-token authentication
 - Turns one GPIO pin on for a configurable duration
 - Defaults GPIO off and forces it off after every trigger or error path
 - Ships Podman and quadlet deployment files for Raspberry Pi OS
@@ -52,23 +52,20 @@ Minimal Raspberry Pi webhook service that triggers a GPIO-controlled siren or LE
 
 ## Authentication
 
-The service expects these headers on every request:
+The service expects an HTTP bearer token:
 
-- `X-Siren-Timestamp`: Unix timestamp in seconds
-- `X-Siren-Signature`: `sha256=<hex>` over `timestamp + "." + raw-body`
+- `Authorization: Bearer <token>`
 
-The signature is computed with `SIREN_WEBHOOK_SECRET`.
+Set the token with `SIREN_BEARER_TOKEN`.
+
+FastAPI docs expose this directly:
+
+- `http://<host>:<port>/docs` includes an **Authorize** button for bearer token entry.
 
 Example payload:
 
 ```json
 {"duration_seconds": 3}
-```
-
-Example signature base string:
-
-```text
-1700000000.{"duration_seconds":3}
 ```
 
 ## Environment
@@ -88,7 +85,7 @@ Webhook path test (auth + API + GPIO):
 2. In another terminal, run:
 
    ```bash
-   uv run python scripts/local_trigger.py --secret "replace-me" --duration 1.5
+   uv run python scripts/local_trigger.py --token "replace-me" --duration 1.5
    ```
 
 Direct GPIO pulse test (no HTTP):

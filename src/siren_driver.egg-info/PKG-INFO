@@ -8,6 +8,7 @@ License-File: LICENSE
 Requires-Dist: fastapi<1,>=0.115
 Requires-Dist: uvicorn[standard]<1,>=0.30
 Requires-Dist: gpiozero<3,>=2.0
+Requires-Dist: python-dotenv<2,>=1.0
 Provides-Extra: dev
 Requires-Dist: pytest<9,>=8.0; extra == "dev"
 Requires-Dist: httpx<1,>=0.27; extra == "dev"
@@ -29,13 +30,21 @@ Minimal Raspberry Pi webhook service that triggers a GPIO-controlled siren or LE
 
 ## Quick start
 
-1. Use Python 3.11 for this project (recommended on Raspberry Pi):
+1. Run the bootstrap script:
+
+   ```bash
+   ./scripts/setup.sh
+   ```
+
+   On Raspberry Pi, this auto-installs the Pi GPIO extra. On non-Pi hosts, it installs only the default/dev extras.
+
+2. If you prefer the manual path, use Python 3.11 for this project:
 
    ```bash
    uv python install 3.11
    ```
 
-2. Install Python dependencies with `uv` into `.venv`:
+3. Install Python dependencies with `uv` into `.venv`:
 
    ```bash
    uv sync --python 3.11 --extra dev
@@ -47,13 +56,13 @@ Minimal Raspberry Pi webhook service that triggers a GPIO-controlled siren or LE
    uv sync --python 3.11 --extra dev --extra pi
    ```
 
-3. Create a local environment file:
+4. Create a local environment file:
 
    ```bash
    cp .env.example .env
    ```
 
-4. Start the service locally:
+5. Start the service locally:
 
    ```bash
    uv run uvicorn siren_driver.main:app --host 0.0.0.0 --port 8000

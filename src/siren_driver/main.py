@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+import logging
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
-from fastapi.responses import JSONResponse
+from fastapi import Body, Depends, FastAPI, HTTPException, Request, Security, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
-from .auth import verify_hmac_request
+from .auth import verify_bearer_token
 from .config import Settings
 from .gpio import SirenHardware
 
@@ -26,6 +27,23 @@ class TriggerResponse(BaseModel):
 class AppState:
     settings: Settings
     hardware: SirenHardware
+
+
+bearer_auth = HTTPBearer(auto_error=False)
+logger = logging.getLogger("uvicorn.error")
+
+
+def _request_source_ip(request: Request) -> str:
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        first_hop = forwarded_for.split(",", maxsplit=1)[0].strip()
+        if first_hop:
+            return first_hop
+
+    if request.client and request.client.host:
+        return request.client.host
+
+    return "unknown"
 
 
 def create_app() -> FastAPI:
@@ -50,18 +68,16 @@ def create_app() -> FastAPI:
     def healthz() -> dict[str, str]:
         return {"status": "ok"}
 
-    @app.post("/trigger", response_model=TriggerResponse)
+    @app.post("/trigger", response_model=TriggerResponse, status_code=status.HTTP_202_ACCEPTED)
     async def trigger_siren(
         request: Request,
         state: AppState = Depends(get_state),
-    ) -> JSONResponse:
-        await verify_hmac_request(request, state.settings.webhook_secret, state.settings.auth_skew_seconds)
+        credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
+        payload: TriggerRequest = Body(default_factory=TriggerRequest),
+    ) -> TriggerResponse:
+        verify_bearer_token(credentials, state.settings.bearer_token)
 
-        try:
-            payload = TriggerRequest.model_validate(await request.json())
-        except Exception as exc:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="invalid request body") from exc
-
+        source_ip = _request_source_ip(request)
         duration_seconds = payload.duration_seconds or state.settings.default_duration_seconds
         if duration_seconds > state.settings.max_duration_seconds:
             raise HTTPException(
@@ -71,15 +87,15 @@ def create_app() -> FastAPI:
 
         result = state.hardware.trigger(duration_seconds)
         if not result.accepted:
+            logger.warning("Trigger rejected from %s for %.2fs: %s", source_ip, duration_seconds, result.message)
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=result.message)
 
-        return JSONResponse(
-            status_code=status.HTTP_202_ACCEPTED,
-            content=TriggerResponse(
-                accepted=True,
-                duration_seconds=duration_seconds,
-                message=result.message,
-            ).model_dump(),
+        logger.info("Trigger accepted from %s for %.2fs", source_ip, duration_seconds)
+
+        return TriggerResponse(
+            accepted=True,
+            duration_seconds=duration_seconds,
+            message=result.message,
         )
 
     return app
