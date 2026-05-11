@@ -5,12 +5,20 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+RUN apt-get update \
+        && apt-get install -y --no-install-recommends \
+            build-essential \
+            python3-dev \
+            swig \
+            liblgpio-dev \
+        && rm -rf /var/lib/apt/lists/*
+
 RUN pip install --no-cache-dir uv
 
 COPY pyproject.toml README.md /app/
 COPY src /app/src
 
-RUN uv sync --no-dev
+RUN uv sync --no-dev --extra pi
 
 EXPOSE 8000
 
