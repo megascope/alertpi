@@ -7,8 +7,12 @@ ContainerName=siren-webhook
 PublishPort=8000:8000
 EnvironmentFile=%h/.config/siren-webhook/siren-webhook.env
 Volume=%h/.config/siren-webhook:/config:Z
-Device=/dev/gpiomem
-GroupAdd=gpio
+AddDevice=/dev/gpiomem
+AddDevice=/dev/gpiochip0
+GroupAdd=986
 
 [Service]
 Restart=always
+RestartSec=5
+StartLimitBurst=5
+StartLimitIntervalSec=30s

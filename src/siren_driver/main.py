@@ -3,8 +3,11 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 import logging
+import math
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Request, Security, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
@@ -14,7 +17,7 @@ from .gpio import SirenHardware
 
 
 class TriggerRequest(BaseModel):
-    duration_seconds: float | None = Field(default=None, gt=0, le=60)
+    duration_seconds: float | None = Field(default=None, gt=0, le=60, allow_inf_nan=False)
 
 
 class TriggerResponse(BaseModel):
@@ -31,6 +34,18 @@ class AppState:
 
 bearer_auth = HTTPBearer(auto_error=False)
 logger = logging.getLogger("uvicorn.error")
+
+
+def _sanitize_for_json(value: object) -> object:
+    if isinstance(value, float) and not math.isfinite(value):
+        return str(value)
+    if isinstance(value, dict):
+        return {key: _sanitize_for_json(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_sanitize_for_json(item) for item in value]
+    if isinstance(value, tuple):
+        return [_sanitize_for_json(item) for item in value]
+    return value
 
 
 def _request_source_ip(request: Request) -> str:
@@ -61,6 +76,13 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="Siren Driver", lifespan=lifespan)
 
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            content={"detail": _sanitize_for_json(exc.errors())},
+        )
+
     def get_state(request: Request) -> AppState:
         return request.app.state.siren_state
 
@@ -81,7 +103,7 @@ def create_app() -> FastAPI:
         duration_seconds = payload.duration_seconds or state.settings.default_duration_seconds
         if duration_seconds > state.settings.max_duration_seconds:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=f"duration_seconds cannot exceed {state.settings.max_duration_seconds}",
             )
 

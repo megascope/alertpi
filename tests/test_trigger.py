@@ -22,3 +22,21 @@ def test_trigger_uses_default_duration(monkeypatch):
 
     assert response.status_code == 202
     assert response.json()["duration_seconds"] == 2
+
+
+def test_trigger_rejects_non_finite_duration(monkeypatch):
+    monkeypatch.setenv("SIREN_BEARER_TOKEN", "secret")
+    monkeypatch.setenv("GPIOZERO_PIN_FACTORY", "mock")
+    app = create_app()
+
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.post(
+            "/trigger",
+            data='{"duration_seconds": NaN}',
+            headers={
+                "Authorization": "Bearer secret",
+                "Content-Type": "application/json",
+            },
+        )
+
+    assert response.status_code == 422
