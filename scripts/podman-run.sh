@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-image_name=${1:-localhost/siren-webhook:latest}
+image_name=${1:-ghcr.io/megascope/alertpi/siren-webhook:latest}
 
 podman run --rm -it \
   --name siren-webhook \

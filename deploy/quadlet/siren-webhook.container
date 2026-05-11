@@ -2,7 +2,7 @@
 Description=Siren webhook service
 
 [Container]
-Image=localhost/siren-webhook:latest
+Image=ghcr.io/megascope/alertpi/siren-webhook:latest
 ContainerName=siren-webhook
 PublishPort=8000:8000
 EnvironmentFile=%h/.config/siren-webhook/siren-webhook.env
