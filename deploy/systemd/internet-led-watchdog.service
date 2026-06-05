@@ -1,0 +1,31 @@
+[Unit]
+Description=Blink Raspberry Pi ACT LED when internet access is down
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+WorkingDirectory={{APP_DIR}}
+Environment=PYTHONPATH={{APP_DIR}}/src
+EnvironmentFile=-{{ENV_FILE}}
+ExecStart=/usr/bin/python3 {{APP_DIR}}/src/watchdog/internet_led_watchdog.py
+Restart=always
+RestartSec=5
+UMask=0027
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectControlGroups=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

@@ -157,6 +157,45 @@ sudo ./scripts/systemd-uninstall.sh
 sudo ./scripts/systemd-uninstall.sh --purge
 ```
 
+## Internet LED watchdog
+
+On Raspberry Pi 3, the built-in green ACT LED is normally exposed through
+`/sys/class/leds/led0`. This repo includes a small root systemd watchdog that
+blinks SOS on that LED only after internet checks fail repeatedly, then restores
+the LED's previous kernel trigger when connectivity returns or the service
+stops.
+
+Install and enable it:
+
+```bash
+sudo ./scripts/internet-watchdog-install.sh
+```
+
+Check status and logs:
+
+```bash
+sudo systemctl status internet-led-watchdog.service --no-pager
+sudo journalctl -u internet-led-watchdog.service -n 50 --no-pager
+```
+
+Test the SOS blink pattern once:
+
+```bash
+sudo /usr/bin/python3 /opt/siren-driver/src/watchdog/internet_led_watchdog.py --test
+```
+
+Optional settings live in `/etc/siren-driver/internet-led-watchdog.env`.
+Defaults probe `1.1.1.1:443` and `8.8.8.8:53` every 10 seconds. Blinking
+starts after 3 consecutive failed checks. The SOS pattern uses a 0.2 second
+Morse timing unit by default.
+
+Remove the service:
+
+```bash
+sudo ./scripts/internet-watchdog-uninstall.sh
+sudo ./scripts/internet-watchdog-uninstall.sh --purge
+```
+
 ## Safety notes
 
 - GPIO starts inactive and is driven low on startup.
